@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/*
+ * Light theme only, on purpose: it stays readable on classroom projectors,
+ * where dark themes tend to wash out. System fonts avoid any network fetch.
+ */
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #ffffff;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 1.0625rem;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border-2 border-slate-800 bg-white px-5 py-2.5 font-semibold text-slate-900 transition-colors hover:bg-slate-100 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400;
+  }
+  .btn-link {
+    @apply rounded px-2 py-2.5 font-medium text-red-800 underline hover:text-red-950 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue-700;
+  }
+}
