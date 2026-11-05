@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRoboflowHeaders,
   buildRoboflowUrl,
   mapRoboflowStatus,
   normaliseBase64,
@@ -31,11 +32,26 @@ describe("readRoboflowConfig", () => {
 });
 
 describe("buildRoboflowUrl", () => {
-  it("builds the serverless URL with a 0-1 confidence of 0.1", () => {
-    const url = new URL(buildRoboflowUrl({ apiKey: "abc 123", modelId: "zebra-xing", modelVersion: "2" }));
-    expect(url.origin + url.pathname).toBe("https://serverless.roboflow.com/zebra-xing/2");
-    expect(url.searchParams.get("api_key")).toBe("abc 123");
-    expect(url.searchParams.get("confidence")).toBe("0.1");
+  const config = { apiKey: "secret-key-123", modelId: "people-counting-activity-v2", modelVersion: "2" };
+
+  it("builds the serverless URL with confidence 10 on Roboflow's 0-100 scale", () => {
+    const url = new URL(buildRoboflowUrl(config));
+    expect(url.origin + url.pathname).toBe("https://serverless.roboflow.com/people-counting-activity-v2/2");
+    expect(url.searchParams.get("confidence")).toBe("10");
+    expect(url.searchParams.get("overlap")).toBe("30");
+  });
+
+  it("never puts the API key in the URL", () => {
+    const url = buildRoboflowUrl(config);
+    expect(url).not.toContain("secret-key-123");
+    expect(url).not.toContain("api_key");
+  });
+
+  it("sends the key as a Bearer header with a form-urlencoded body type", () => {
+    expect(buildRoboflowHeaders(config)).toEqual({
+      Authorization: "Bearer secret-key-123",
+      "Content-Type": "application/x-www-form-urlencoded",
+    });
   });
 });
 

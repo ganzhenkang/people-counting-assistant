@@ -31,7 +31,12 @@ trained and hosted on [Roboflow](https://roboflow.com). It then shows:
   | `person_left_phone` | walking left, using a phone | orange |
   | `person_right_phone` | walking right, using a phone | orange |
 
-- **Confidence slider** (10–95%, default 40%). Results update instantly, with no new request.
+- **Confidence slider** (10–95%, default 28%). Results update instantly, with no new request.
+  The default is `DEFAULT_CONFIDENCE_THRESHOLD_PERCENT` in [`src/lib/analysis.ts`](src/lib/analysis.ts);
+  it is set to the peak of the model's F1-confidence curve ("all classes 0.72 at 0.275", rounded to 28%).
+- **Duplicate merging:** when two boxes overlap with an IoU above 0.5, only the higher-confidence box
+  is kept, even if their classes differ (e.g. the same person detected as both `person_left` and
+  `person_left_phone`).
 - **Visibility toggles** to show or hide box groups. These never change the counts.
 - **Download the annotated image** as a PNG, with the counts and rating in a caption.
 - **"Flag wrong result":** saves feedback in the browser and exports it as JSON for model improvement.
@@ -71,8 +76,8 @@ After changing `.env.local`, stop the dev server (Ctrl+C) and start it again.
 | Name | What it is | Where to find it |
 | --- | --- | --- |
 | `ROBOFLOW_API_KEY` | Private API key | Roboflow → Settings → API Keys (from the workspace that owns the model) |
-| `ROBOFLOW_MODEL_ID` | Project ID | The project URL: `app.roboflow.com/<workspace>/`**`<project-id>`** |
-| `ROBOFLOW_MODEL_VERSION` | Trained version number | The project's **Versions** page, e.g. `2` |
+| `ROBOFLOW_MODEL_ID` | Project ID: `people-counting-activity-v2` | The project URL: `app.roboflow.com/<workspace>/`**`<project-id>`** |
+| `ROBOFLOW_MODEL_VERSION` | Trained version number: `2` | The project's **Versions** page |
 
 The server calls `https://serverless.roboflow.com/{ROBOFLOW_MODEL_ID}/{ROBOFLOW_MODEL_VERSION}`.
 
@@ -80,7 +85,8 @@ The server calls `https://serverless.roboflow.com/{ROBOFLOW_MODEL_ID}/{ROBOFLOW_
 
 - The variables are **server-only**. Never add a `NEXT_PUBLIC_` prefix, because Next.js would then send them to the browser.
 - `.env.local` is git-ignored. **Never commit real keys.** `.env.example` lists the names only.
-- The key is used only in `src/app/api/detect/route.ts`. It is never logged, and never returned in
+- The key is used only in `src/app/api/detect/route.ts`, and is sent to Roboflow in an
+  `Authorization: Bearer` header (never in the URL). It is never logged, and never returned in
   responses or error messages.
 
 ### Using a model trained by a teammate
@@ -140,13 +146,21 @@ fix EXIF orientation, resize to 1600 px,
 JPEG ~85% (lower until under 4 MB)
 POST /api/detect { image: base64 }  ───▶  read env vars, validate
                                           POST base64 body               ──▶ /{model}/{version}
-                                          (x-www-form-urlencoded,             ?confidence=0.1
+                                          (x-www-form-urlencoded,             ?confidence=10
                                            30 s timeout)                 ◀──  predictions[]
                                     ◀───  { predictions, image }
-filter by slider, count, rate, draw boxes (no new request)
+1. filter by slider  2. merge duplicates (IoU > 0.5)
+3. count, rate, draw boxes, download (no new request)
 ```
 
-- **Confidence:** the server requests every detection at 10% confidence or above. The slider then filters them in the browser.
+- **Request format** (from Roboflow's hosted object detection REST docs): `POST` the raw base64
+  string as an `application/x-www-form-urlencoded` body, with the key in an
+  `Authorization: Bearer` header. `confidence` and `overlap` are on a **0–100** scale.
+- **Confidence:** the server requests every detection at 10% confidence or above (`confidence=10`). The slider then filters them in the browser.
+- **Processing order:** (1) confidence filter, (2) duplicate merge: any two boxes with an IoU
+  **above** 0.5 keep only the higher-confidence one, across classes; boxes at or below 0.5 are never
+  merged, (3) the remaining boxes drive the display, counts, rating and download. All three steps are
+  pure functions in `src/lib/analysis.ts`.
 - **Box coordinates:** Roboflow returns `x` and `y` as the **centre** of each box. They are converted
   to a top-left corner in `src/lib/geometry.ts`. Boxes are drawn on a canvas at full resolution and
   scaled with CSS, so they stay aligned at any screen size.
@@ -156,17 +170,18 @@ filter by slider, count, rate, draw boxes (no new request)
 
 - Phone users = `person_left_phone` + `person_right_phone`
 - Total people = all four classes
-- Score = phone users ÷ total people × 100, rounded to a whole number
+- Score = phone users ÷ total people × 100
 
-| Rounded score | Rating |
+| Score | Rating |
 | --- | --- |
 | under 34% | Low |
-| 34% to 66% | Medium |
+| 34% up to, but not including, 67% | Medium |
 | 67% or above | High |
 | no people detected | "No pedestrians detected" (no score) |
 
-The rating band comes from the **rounded** score shown on screen, so the label always matches the
-number. For example, 2 of 3 people (66.7%) shows as 67% and is rated High.
+The band comes from the **exact** score. The score is shown truncated to one decimal place, so the
+number never appears to cross a boundary. For example, 2 of 3 people (66.67%) shows as
+"66.6%" and is rated Medium.
 
 ### Flags
 
@@ -182,8 +197,8 @@ src/
   app/page.tsx              page layout, title and subtitle
   components/               UI (upload, samples, rating, counts, flags, main view)
   config/classes.ts         class names, descriptions and colours
-  lib/analysis.ts           filtering, counting and rating logic (pure functions)
-  lib/geometry.ts           centre → top-left box conversion and resize maths
+  lib/analysis.ts           filtering, merging, counting and rating logic (pure functions)
+  lib/geometry.ts           centre → top-left box conversion, IoU and resize maths
   lib/roboflow.ts           Roboflow request and response helpers
   lib/imageProcessing.ts    browser resize, orientation and JPEG encoding
   lib/flags.ts, samples.ts  localStorage flags and the sample manifest parser
@@ -198,7 +213,8 @@ public/samples/             sample images and manifest.json
 npm run dev         # development server on http://localhost:3000
 npm run lint        # ESLint
 npm run typecheck   # TypeScript
-npm test            # unit tests (rating and its 34% / 67% boundaries, filtering, geometry, parsing, flags)
+npm test            # unit tests (rating and its 34% / 67% boundaries, zero people, filtering, IoU,
+                    # cross-class merging, boxes below the IoU limit, parsing, flags)
 npm run build       # production build
 npm run check       # lint + typecheck + test + build
 
@@ -210,6 +226,14 @@ The browser tests generate synthetic images in `tests/e2e/images/`. Tests labell
 the toggles, download and flags can be checked without credentials. Tests labelled **[real API]**
 call the real route: with valid credentials they expect a real result, and without them a clear
 error. To use Chrome instead of Edge, set `PW_CHANNEL=chrome`.
+
+**Real-photo check before a demo** (needs credentials in `.env.local`; saves
+`test-results/real-photo.png`):
+
+```powershell
+npm run build
+$env:REAL_PHOTO = "C:\photos\crossing.jpg"; npx playwright test real-photo
+```
 
 ## 8. Troubleshooting
 

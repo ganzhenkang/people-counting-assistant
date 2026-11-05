@@ -107,7 +107,7 @@ test("[stubbed API] draws boxes, counts, rating, slider and toggles", async ({ p
   await upload(page, "small.jpg");
   await page.getByRole("button", { name: "Analyse" }).click();
 
-  // Default 40%: the 0.2 detection is filtered out -> 2 phone users of 4 people = 50% Medium
+  // Default 28%: the 0.2 detection is filtered out -> 2 phone users of 4 people = 50% Medium
   await expect(page.getByTestId("rating-summary")).toHaveText("2 of 4 pedestrians using a phone (50%) - Medium");
   await expect(page.getByTestId("count-total")).toHaveText("4");
   await expect(page.getByTestId("count-person_right")).toHaveText("1");
@@ -180,7 +180,7 @@ test("[stubbed API] flags are saved to localStorage and exported as JSON", async
   expect(stored).toHaveLength(1);
   expect(stored[0]).toMatchObject({
     filename: "small.jpg",
-    thresholdPercent: 40,
+    thresholdPercent: 28,
     totalPeople: 4,
     phoneUsers: 2,
     rating: "Medium",
@@ -368,6 +368,33 @@ test("[stubbed API] desktop layout shows images side by side", async ({ page }) 
   expect(Math.abs(annotated.y - original.y)).toBeLessThan(5);
   expect(annotated.x).toBeGreaterThan(original.x + original.width - 1);
   await page.screenshot({ path: path.join(IMAGES, "..", "screenshot-desktop.png"), fullPage: true });
+});
+
+test("[stubbed API] cross-class duplicate boxes are merged before counting", async ({ page }) => {
+  await stubDetect(page, {
+    predictions: [
+      // Same person detected twice with different classes (IoU ~0.9) -> only the 0.8 phone box is kept.
+      { x: 300, y: 400, width: 100, height: 200, confidence: 0.8, class: "person_left_phone" },
+      { x: 305, y: 400, width: 100, height: 200, confidence: 0.6, class: "person_left" },
+      // Overlaps the box below, but only IoU 1/3 -> both kept.
+      { x: 700, y: 400, width: 100, height: 200, confidence: 0.9, class: "person_right" },
+      { x: 750, y: 400, width: 100, height: 200, confidence: 0.7, class: "person_right" },
+    ],
+    image: { width: 1200, height: 800 },
+    malformedCount: 0,
+  });
+  await upload(page, "small.jpg");
+  await page.getByRole("button", { name: "Analyse" }).click();
+  await expect(page.getByTestId("count-total")).toHaveText("3");
+  await expect(page.getByTestId("count-person_left")).toHaveText("0");
+  await expect(page.getByTestId("count-person_left_phone")).toHaveText("1");
+  await expect(page.getByTestId("count-person_right")).toHaveText("2");
+  // 1 of 3 = 33.3% -> Low (exact score, under 34%)
+  await expect(page.getByTestId("rating-summary")).toHaveText("1 of 3 pedestrians using a phone (33.3%) - Low");
+  await expect(page.getByTestId("merged-note")).toContainText("1 overlapping duplicate box was merged");
+  await expect(page.getByTestId("honesty-note")).toHaveText(
+    "Results are model estimates and may be wrong when phones are small or hidden. This rating is not a measure of real-world safety.",
+  );
 });
 
 test("keyboard users can reach the file picker button", async ({ page }) => {

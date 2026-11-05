@@ -32,10 +32,10 @@ export function RatingCard({ rating, threshold }: { rating: Rating; threshold: n
           </p>
         </>
       )}
-      <p className="mt-3 text-sm">
-        Counting detections at {threshold}% confidence or higher. This rating is based only on the model&apos;s
-        detections. It is not a measure of real-world safety, and it may be wrong when phones are small, hidden or
-        partly out of view.
+      <p className="mt-3 text-sm">Counting detections at {threshold}% confidence or higher.</p>
+      <p className="mt-1 text-base font-medium" data-testid="honesty-note">
+        Results are model estimates and may be wrong when phones are small or hidden. This rating is not a measure of
+        real-world safety.
       </p>
     </section>
   );

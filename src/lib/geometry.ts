@@ -21,6 +21,19 @@ export function predictionToRect(p: Prediction, source: ImageSize, target: Image
   return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 }
 
+/**
+ * Intersection over union of two Roboflow boxes (x, y = CENTRE). Returns 0 to 1.
+ * Both boxes must be in the same image space.
+ */
+export function iou(a: Prediction, b: Prediction): number {
+  const ix = Math.min(a.x + a.width / 2, b.x + b.width / 2) - Math.max(a.x - a.width / 2, b.x - b.width / 2);
+  const iy = Math.min(a.y + a.height / 2, b.y + b.height / 2) - Math.max(a.y - a.height / 2, b.y - b.height / 2);
+  if (ix <= 0 || iy <= 0) return 0;
+  const intersection = ix * iy;
+  const union = a.width * a.height + b.width * b.height - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
 export interface LabelPlacement extends Rect {
   /** False when the label sits away from its box and needs a connector line. */
   attached: boolean;

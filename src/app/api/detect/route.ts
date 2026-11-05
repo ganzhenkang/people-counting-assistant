@@ -2,6 +2,7 @@ import { DETECT_ERROR_MESSAGES } from "@/lib/errors";
 import {
   MAX_BASE64_LENGTH,
   ROBOFLOW_TIMEOUT_MS,
+  buildRoboflowHeaders,
   buildRoboflowUrl,
   mapRoboflowStatus,
   normaliseBase64,
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   try {
     upstream = await fetch(buildRoboflowUrl(config), {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: buildRoboflowHeaders(config),
       body: image,
       signal: AbortSignal.timeout(ROBOFLOW_TIMEOUT_MS),
       cache: "no-store",
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const name = err instanceof Error ? err.name : "";
     if (name === "TimeoutError" || name === "AbortError") return fail("TIMEOUT");
-    // Do not log `err` itself: some fetch errors include the request URL, which contains the key.
+    // Do not log `err` itself: keep logs limited to our own error codes.
     return fail("UPSTREAM_ERROR", `network error: ${name || "unknown"}`);
   }
 

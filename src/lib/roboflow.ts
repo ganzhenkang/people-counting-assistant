@@ -1,22 +1,28 @@
 /**
  * Pure helpers for talking to the Roboflow Serverless Hosted API.
  *
- * Request format (checked against Roboflow's inference server source, the code
- * behind serverless.roboflow.com, legacy route /{model_id}/{version}):
- *   POST https://serverless.roboflow.com/{model_id}/{version}?api_key=...&confidence=0.1
+ * Request format, from Roboflow's REST docs for object detection
+ * (docs.roboflow.com, "Object Detection" hosted API, checked 2026-11-05):
+ *   POST https://serverless.roboflow.com/{model_id}/{version}?confidence=10&overlap=30&format=json
+ *   Authorization: Bearer <API key>
  *   Content-Type: application/x-www-form-urlencoded
  *   Body: the raw base64 string of the image (no "data:" prefix, no form field name)
- * `confidence` is a float in [0, 1]. Values >= 1 are divided by 100 by the server,
- * so 0.1 and 10 both mean 10%. We send 0.1, the documented form.
+ * `confidence` and `overlap` are on a scale of 0-100 (defaults 40 and 30).
+ * Response: { predictions: [{ x, y, width, height, confidence (0-1), class, ... }], image: { width, height } }
+ * where x and y are the CENTRE of the box.
+ *
+ * The key is sent in a header (as the docs recommend), never in the URL, so it cannot
+ * leak through URL logging.
  */
 import type { DetectErrorCode, ImageSize, Prediction } from "@/lib/types";
 
 export { MAX_BASE64_LENGTH } from "@/lib/limits";
 
 export const ROBOFLOW_BASE_URL = "https://serverless.roboflow.com";
-/** Ask for everything at or above 10% so the browser slider can filter without new requests. */
-export const REQUEST_CONFIDENCE = 0.1;
-export const REQUEST_OVERLAP = 0.3;
+/** Ask for everything at or above 10% (0-100 scale) so the browser slider can filter without new requests. */
+export const REQUEST_CONFIDENCE = 10;
+/** Roboflow's own same-class overlap merge (0-100 scale, its default). Cross-class duplicates are merged in the browser. */
+export const REQUEST_OVERLAP = 30;
 export const ROBOFLOW_TIMEOUT_MS = 30_000;
 
 export interface RoboflowConfig {
@@ -38,11 +44,17 @@ export function buildRoboflowUrl(config: RoboflowConfig): string {
   const url = new URL(
     `${ROBOFLOW_BASE_URL}/${encodeURIComponent(config.modelId)}/${encodeURIComponent(config.modelVersion)}`,
   );
-  url.searchParams.set("api_key", config.apiKey);
   url.searchParams.set("confidence", String(REQUEST_CONFIDENCE));
   url.searchParams.set("overlap", String(REQUEST_OVERLAP));
   url.searchParams.set("format", "json");
   return url.toString();
+}
+
+export function buildRoboflowHeaders(config: RoboflowConfig): Record<string, string> {
+  return {
+    Authorization: `Bearer ${config.apiKey}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
 }
 
 /** Remove a "data:image/...;base64," prefix and whitespace. Returns null if not valid base64. */

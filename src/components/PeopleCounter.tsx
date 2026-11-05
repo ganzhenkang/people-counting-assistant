@@ -7,7 +7,7 @@ import { FlagPanel } from "@/components/FlagPanel";
 import { RatingCard } from "@/components/RatingCard";
 import { SampleGallery } from "@/components/SampleGallery";
 import { UploadArea } from "@/components/UploadArea";
-import { SLIDER_DEFAULT, SLIDER_MAX, SLIDER_MIN, analyse, findUnknownClasses } from "@/lib/analysis";
+import { DEFAULT_CONFIDENCE_THRESHOLD_PERCENT, SLIDER_MAX, SLIDER_MIN, analyse, findUnknownClasses } from "@/lib/analysis";
 import { DetectError, detect } from "@/lib/detectClient";
 import { downloadBlob } from "@/lib/download";
 import { buildExportCanvas, drawAnnotations } from "@/lib/draw";
@@ -42,7 +42,7 @@ export function PeopleCounter() {
   const [status, setStatus] = useState<Status>("idle");
   const [problem, setProblem] = useState<{ message: string; retryable: boolean } | null>(null);
   const [result, setResult] = useState<DetectSuccess | null>(null);
-  const [threshold, setThreshold] = useState(SLIDER_DEFAULT);
+  const [threshold, setThreshold] = useState(DEFAULT_CONFIDENCE_THRESHOLD_PERCENT);
   const [visible, setVisible] = useState(allVisible);
   const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
 
@@ -335,6 +335,12 @@ export function PeopleCounter() {
                 <span>{SLIDER_MAX}%</span>
               </p>
               <p className="mt-1 text-sm text-slate-700">Updates boxes, counts and rating instantly. No new request is sent.</p>
+              {analysis.mergedDuplicates > 0 && (
+                <p className="mt-1 text-sm text-slate-700" data-testid="merged-note">
+                  {analysis.mergedDuplicates} overlapping duplicate {analysis.mergedDuplicates === 1 ? "box was" : "boxes were"}{" "}
+                  merged (IoU above 50%, higher confidence kept).
+                </p>
+              )}
 
               <fieldset className="mt-4">
                 <legend className="font-medium text-slate-900">Show boxes for</legend>
