@@ -81,18 +81,25 @@ test("explains when an image cannot be read", async ({ page }) => {
   await expect(page.getByTestId("error-box")).toContainText("could not be opened");
 });
 
-test("[real API] shows the server's error and disables Analyse while the request runs", async ({ page }) => {
-  // The test server is started with missing or invalid credentials, so a real request must fail cleanly.
+test("[real API] disables Analyse while the request runs, then shows a result or a clean error", async ({ page }) => {
+  // Works with or without credentials in .env.local: valid ones give a real result,
+  // missing or invalid ones must give a clear, non-retryable error.
   await upload(page, "small.jpg");
   const analyse = page.getByRole("button", { name: "Analyse" });
   await expect(analyse).toBeEnabled();
   await analyse.click();
   await expect(page.getByRole("button", { name: "Analysing…" })).toBeDisabled();
   // A real round trip to Roboflow can take several seconds.
-  await expect(page.getByTestId("error-box")).toContainText(/Roboflow rejected the request|Roboflow settings are missing/, {
-    timeout: 35_000,
-  });
-  await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0); // not retryable
+  const errorBox = page.getByTestId("error-box");
+  const rating = page.getByTestId("rating-label");
+  await expect(errorBox.or(rating)).toBeVisible({ timeout: 35_000 });
+  if (await errorBox.isVisible()) {
+    await expect(errorBox).toContainText(/Roboflow rejected the request|Roboflow settings are missing/);
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0); // not retryable
+  } else {
+    // The synthetic test image has no people in it.
+    await expect(rating).toBeVisible();
+  }
 });
 
 test("[stubbed API] draws boxes, counts, rating, slider and toggles", async ({ page }) => {

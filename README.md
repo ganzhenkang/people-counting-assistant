@@ -1,5 +1,7 @@
 # People Counting Assistant (Team 5)
 
+**Live app:** https://people-counting-assistant.vercel.app/
+
 A web app that counts pedestrians at a zebra crossing and estimates how many are distracted by a phone.
 
 Upload a photo of a crossing. The app sends it to Team 5's custom object detection model, which is
@@ -206,8 +208,8 @@ npm run build && npm run test:e2e   # browser tests (uses installed Microsoft Ed
 The browser tests generate synthetic images in `tests/e2e/images/`. Tests labelled
 **[stubbed API]** replace the `/api/detect` response *inside the test only*, so drawing, the slider,
 the toggles, download and flags can be checked without credentials. Tests labelled **[real API]**
-call the real route and expect a clean error when credentials are missing or invalid. To use Chrome
-instead of Edge, set `PW_CHANNEL=chrome`.
+call the real route: with valid credentials they expect a real result, and without them a clear
+error. To use Chrome instead of Edge, set `PW_CHANNEL=chrome`.
 
 ## 8. Troubleshooting
 
