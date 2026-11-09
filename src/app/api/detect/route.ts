@@ -16,6 +16,7 @@ export const maxDuration = 60;
 
 const STATUS_FOR: Record<DetectErrorCode, number> = {
   CONFIG_MISSING: 500,
+  CONFIG_INVALID: 500,
   AUTH_FAILED: 502,
   MODEL_NOT_FOUND: 502,
   RATE_LIMITED: 429,
@@ -35,8 +36,9 @@ function fail(code: DetectErrorCode, detail?: string) {
 }
 
 export async function POST(request: Request) {
-  const config = readRoboflowConfig(process.env);
-  if (!config) return fail("CONFIG_MISSING");
+  const configResult = readRoboflowConfig(process.env);
+  if (!configResult.ok) return fail(configResult.code);
+  const { config } = configResult;
 
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > MAX_BASE64_LENGTH + 1024) return fail("PAYLOAD_TOO_LARGE");

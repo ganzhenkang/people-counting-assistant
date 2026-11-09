@@ -25,6 +25,7 @@ export interface DetectSuccess {
 
 export type DetectErrorCode =
   | "CONFIG_MISSING"
+  | "CONFIG_INVALID"
   | "AUTH_FAILED"
   | "MODEL_NOT_FOUND"
   | "RATE_LIMITED"

@@ -8,35 +8,61 @@ import {
   readRoboflowConfig,
 } from "@/lib/roboflow";
 
+const MODEL = "gans-workspace-efyfd/people-counting-activity-v2-2-yolo26n-t6";
+const missing = { ok: false, code: "CONFIG_MISSING" };
+const invalid = { ok: false, code: "CONFIG_INVALID" };
+
 describe("readRoboflowConfig", () => {
-  it("returns null when any variable is missing or blank", () => {
-    expect(readRoboflowConfig({})).toBeNull();
-    expect(readRoboflowConfig({ ROBOFLOW_API_KEY: "k", ROBOFLOW_MODEL_ID: "m", ROBOFLOW_MODEL_VERSION: " " })).toBeNull();
+  it("reads the API key and the full model ID", () => {
+    expect(readRoboflowConfig({ ROBOFLOW_API_KEY: "k", ROBOFLOW_MODEL: MODEL })).toEqual({
+      ok: true,
+      config: { apiKey: "k", model: MODEL },
+    });
+  });
+
+  it("reports missing config when either variable is missing or blank", () => {
+    expect(readRoboflowConfig({})).toEqual(missing);
+    expect(readRoboflowConfig({ ROBOFLOW_API_KEY: "k", ROBOFLOW_MODEL: " " })).toEqual(missing);
+    expect(readRoboflowConfig({ ROBOFLOW_MODEL: MODEL })).toEqual(missing);
+  });
+
+  it("no longer reads the old ROBOFLOW_MODEL_ID / ROBOFLOW_MODEL_VERSION pair", () => {
+    expect(
+      readRoboflowConfig({ ROBOFLOW_API_KEY: "k", ROBOFLOW_MODEL_ID: "people-counting-activity-v2", ROBOFLOW_MODEL_VERSION: "2" }),
+    ).toEqual(missing);
   });
 
   it("trims whitespace and stray slashes", () => {
-    expect(
-      readRoboflowConfig({ ROBOFLOW_API_KEY: " k ", ROBOFLOW_MODEL_ID: "/my-model/", ROBOFLOW_MODEL_VERSION: "3\n" }),
-    ).toEqual({ apiKey: "k", modelId: "my-model", modelVersion: "3" });
+    expect(readRoboflowConfig({ ROBOFLOW_API_KEY: " k ", ROBOFLOW_MODEL: ` /${MODEL}/\n` })).toEqual({
+      ok: true,
+      config: { apiKey: "k", model: MODEL },
+    });
   });
 
+  it.each(["just-a-slug", "a/b/c", "a//b", "work space/model", "ws/model?x=1", "../model"])(
+    "rejects a malformed model ID: %s",
+    (model) => {
+      expect(readRoboflowConfig({ ROBOFLOW_API_KEY: "k", ROBOFLOW_MODEL: model })).toEqual(invalid);
+    },
+  );
+
   it("ignores NEXT_PUBLIC_ variables", () => {
-    expect(
-      readRoboflowConfig({
-        NEXT_PUBLIC_ROBOFLOW_API_KEY: "k",
-        NEXT_PUBLIC_ROBOFLOW_MODEL_ID: "m",
-        NEXT_PUBLIC_ROBOFLOW_MODEL_VERSION: "1",
-      }),
-    ).toBeNull();
+    expect(readRoboflowConfig({ NEXT_PUBLIC_ROBOFLOW_API_KEY: "k", NEXT_PUBLIC_ROBOFLOW_MODEL: MODEL })).toEqual(missing);
   });
 });
 
 describe("buildRoboflowUrl", () => {
-  const config = { apiKey: "secret-key-123", modelId: "people-counting-activity-v2", modelVersion: "2" };
+  const config = { apiKey: "secret-key-123", model: MODEL };
 
-  it("builds the serverless URL with confidence 10 on Roboflow's 0-100 scale", () => {
+  it("calls the full model ID, keeping the slash between workspace and model slug", () => {
     const url = new URL(buildRoboflowUrl(config));
-    expect(url.origin + url.pathname).toBe("https://serverless.roboflow.com/people-counting-activity-v2/2");
+    expect(url.origin + url.pathname).toBe(
+      "https://serverless.roboflow.com/gans-workspace-efyfd/people-counting-activity-v2-2-yolo26n-t6",
+    );
+  });
+
+  it("requests confidence 10 on Roboflow's 0-100 scale", () => {
+    const url = new URL(buildRoboflowUrl(config));
     expect(url.searchParams.get("confidence")).toBe("10");
     expect(url.searchParams.get("overlap")).toBe("30");
   });

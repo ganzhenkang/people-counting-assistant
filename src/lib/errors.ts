@@ -3,11 +3,13 @@ import type { DetectErrorCode } from "@/lib/types";
 /** Plain-English messages for every detection error. Never include secrets here. */
 export const DETECT_ERROR_MESSAGES: Record<DetectErrorCode, string> = {
   CONFIG_MISSING:
-    "The app is not set up yet: the Roboflow settings are missing on the server. Add ROBOFLOW_API_KEY, ROBOFLOW_MODEL_ID and ROBOFLOW_MODEL_VERSION, then restart or redeploy.",
+    "The app is not set up yet: the Roboflow settings are missing on the server. Add ROBOFLOW_API_KEY and ROBOFLOW_MODEL, then restart or redeploy.",
+  CONFIG_INVALID:
+    "The app is not set up correctly: ROBOFLOW_MODEL must be a full Roboflow model ID in the form workspace/model-slug (for example my-workspace/my-project-2-yolo26n-t1). Fix it, then restart or redeploy.",
   AUTH_FAILED:
-    "Roboflow rejected the request. The API key may be wrong, or it may not have access to this model. Check ROBOFLOW_API_KEY, ROBOFLOW_MODEL_ID and ROBOFLOW_MODEL_VERSION.",
+    "Roboflow rejected the request. The API key may be wrong, or it may not have access to this model. Check ROBOFLOW_API_KEY and ROBOFLOW_MODEL.",
   MODEL_NOT_FOUND:
-    "Roboflow could not find this model. Check that ROBOFLOW_MODEL_ID and ROBOFLOW_MODEL_VERSION match a trained, deployed model version.",
+    "Roboflow could not find this model. Check that ROBOFLOW_MODEL is the full model ID from the project's Models page (workspace/model-slug).",
   RATE_LIMITED: "Roboflow is receiving too many requests right now. Wait a few seconds, then try again.",
   TIMEOUT:
     "The model took too long to respond (over 30 seconds). The first request after a quiet period can be slow, so please try again.",

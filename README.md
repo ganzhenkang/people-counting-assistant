@@ -63,7 +63,7 @@ git clone <this-repo-url>
 cd <repo-folder>
 npm install
 cp .env.example .env.local     # Windows PowerShell: Copy-Item .env.example .env.local
-# edit .env.local and fill in the three values (see below)
+# edit .env.local and fill in the two values (see below)
 npm run dev
 ```
 
@@ -76,10 +76,18 @@ After changing `.env.local`, stop the dev server (Ctrl+C) and start it again.
 | Name | What it is | Where to find it |
 | --- | --- | --- |
 | `ROBOFLOW_API_KEY` | Private API key | Roboflow → Settings → API Keys (from the workspace that owns the model) |
-| `ROBOFLOW_MODEL_ID` | Project ID: `people-counting-activity-v2` | The project URL: `app.roboflow.com/<workspace>/`**`<project-id>`** |
-| `ROBOFLOW_MODEL_VERSION` | Trained version number: `2` | The project's **Versions** page |
+| `ROBOFLOW_MODEL` | Full model ID, `workspace/model-slug`. Ours: `gans-workspace-efyfd/people-counting-activity-v2-2-yolo26n-t6` | The project's **Models** page in Roboflow |
 
-The server calls `https://serverless.roboflow.com/{ROBOFLOW_MODEL_ID}/{ROBOFLOW_MODEL_VERSION}`.
+The server calls `https://serverless.roboflow.com/{ROBOFLOW_MODEL}`. The model slug is
+`{project}-{version}-{architecture}-t{training}`, so `…-2-yolo26n-t6` is the 6th YOLO26n training on version 2.
+
+**Why the full model ID?** A Roboflow version can hold several models. The older `project/version`
+ID (e.g. `people-counting-activity-v2/2`) only points at the version's first successful training,
+or fails if the version holds several models and has no alias. The full model ID always calls
+exactly the model named. If `ROBOFLOW_MODEL` is not in the `workspace/model-slug` form, the app
+shows a setup error instead of calling Roboflow.
+
+The old `ROBOFLOW_MODEL_ID` and `ROBOFLOW_MODEL_VERSION` variables are no longer read.
 
 **Security:**
 
@@ -91,20 +99,21 @@ The server calls `https://serverless.roboflow.com/{ROBOFLOW_MODEL_ID}/{ROBOFLOW_
 
 ### Using a model trained by a teammate
 
-- **Trained in Roboflow:** get the project ID, the version number and a private API key **from the same
-  workspace as the model**. The simplest option is to train inside one shared workspace.
+- **Trained in Roboflow:** get the full model ID (from the **Models** page) and a private API key
+  **from the same workspace as the model**. The simplest option is to train inside one shared workspace.
 - **Trained elsewhere** (e.g. Colab or Ultralytics):
   1. Get the `best.pt` file, the model type (e.g. YOLO26n) and the `data.yaml` class list.
   2. Upload the weights to a Roboflow dataset version with the same classes.
-  3. Use that project and version.
+  3. Use the model ID Roboflow shows for the uploaded model.
 - The class names must match the four above **exactly**. If they don't, change them in
   [`src/config/classes.ts`](src/config/classes.ts).
 
 ## 3. Deploy to Vercel
 
 1. Import this repository in Vercel (**Add New → Project**). The framework is detected as Next.js; keep the defaults.
-2. Under **Settings → Environment Variables**, add `ROBOFLOW_API_KEY`, `ROBOFLOW_MODEL_ID` and
-   `ROBOFLOW_MODEL_VERSION` for Production (and Preview if you use it).
+2. Under **Settings → Environment Variables**, add `ROBOFLOW_API_KEY` and `ROBOFLOW_MODEL` for
+   Production (and Preview if you use it). If the project still has the old `ROBOFLOW_MODEL_ID` and
+   `ROBOFLOW_MODEL_VERSION` variables, you can delete them; the app no longer reads them.
 3. Deploy. If you change the variables later, **redeploy** so they take effect.
 4. Open the deployed URL and analyse one real photo before a demo, to warm up the model.
 
@@ -145,7 +154,7 @@ validate type (JPG/PNG/WEBP) and size (10 MB)
 fix EXIF orientation, resize to 1600 px,
 JPEG ~85% (lower until under 4 MB)
 POST /api/detect { image: base64 }  ───▶  read env vars, validate
-                                          POST base64 body               ──▶ /{model}/{version}
+                                          POST base64 body               ──▶ /{ROBOFLOW_MODEL}
                                           (x-www-form-urlencoded,             ?confidence=10
                                            30 s timeout)                 ◀──  predictions[]
                                     ◀───  { predictions, image }
@@ -241,16 +250,14 @@ $env:REAL_PHOTO = "C:\photos\crossing.jpg"; npx playwright test real-photo
 | --- | --- |
 | "The app is not set up yet…" | One or more environment variables are missing. Restart or redeploy after adding them. |
 | "Roboflow rejected the request…" | Wrong API key, or the key's workspace does not own the model. |
-| "Roboflow could not find this model…" | Wrong project ID or version number, or the version has no trained or uploaded model yet (an upload takes a few minutes to process). |
+| "…ROBOFLOW_MODEL must be a full Roboflow model ID…" | `ROBOFLOW_MODEL` is not in the `workspace/model-slug` form. Copy it from the project's **Models** page. |
+| "Roboflow could not find this model…" | Wrong model ID, or the model has not finished training or processing yet (an upload takes a few minutes). |
 | "too many requests" | Roboflow rate limit. Wait a few seconds, then press Try again. |
 | "took too long" | Model cold start or slow network. Press Try again. |
 | Warning about an unknown class | The model's class names differ from `src/config/classes.ts`. |
 
-**Newer Roboflow model IDs.** Roboflow also gives each model an ID like
-`my-workspace/my-project-2-yolo26n-t1` (shown on the project's **Models** page). The short
-`project/version` form keeps working for the first model on a version. To use a full model ID
-instead, split it at the slash: `ROBOFLOW_MODEL_ID=my-workspace` and
-`ROBOFLOW_MODEL_VERSION=my-project-2-yolo26n-t1`.
+**Switching to a different trained model.** Change `ROBOFLOW_MODEL` to that model's ID from
+the **Models** page, then restart locally or redeploy on Vercel.
 
 ## Limitations
 

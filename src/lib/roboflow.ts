@@ -2,8 +2,12 @@
  * Pure helpers for talking to the Roboflow Serverless Hosted API.
  *
  * Request format, from Roboflow's REST docs for object detection
- * (docs.roboflow.com, "Object Detection" hosted API, checked 2026-11-05):
- *   POST https://serverless.roboflow.com/{model_id}/{version}?confidence=10&overlap=30&format=json
+ * (docs.roboflow.com, "Object Detection" hosted API, checked 2026-11-05 and 2026-11-09):
+ *   POST https://serverless.roboflow.com/{ROBOFLOW_MODEL}?confidence=10&overlap=30&format=json
+ * ROBOFLOW_MODEL is the full model ID "{workspace}/{model-slug}" (docs: "Model IDs"), e.g.
+ * gans-workspace-efyfd/people-counting-activity-v2-2-yolo26n-t6. Its two parts fill the documented
+ * POST /{dataset_id}/{version_id} route. The legacy "{project}/{version}" ID is not used: when a
+ * version holds several models it can resolve to a different model, or fail as ambiguous.
  *   Authorization: Bearer <API key>
  *   Content-Type: application/x-www-form-urlencoded
  *   Body: the raw base64 string of the image (no "data:" prefix, no form field name)
@@ -27,23 +31,34 @@ export const ROBOFLOW_TIMEOUT_MS = 30_000;
 
 export interface RoboflowConfig {
   apiKey: string;
-  modelId: string;
-  modelVersion: string;
+  /** Full model ID: "{workspace}/{model-slug}". */
+  model: string;
 }
 
-/** Read the server-only env vars. Returns null if any are missing or blank. */
-export function readRoboflowConfig(env: Record<string, string | undefined>): RoboflowConfig | null {
+/** A full model ID: exactly two non-empty parts, "{workspace}/{model-slug}". */
+const MODEL_ID_PATTERN = /^[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
+
+export function isValidModelId(model: string): boolean {
+  return MODEL_ID_PATTERN.test(model);
+}
+
+export type RoboflowConfigResult =
+  | { ok: true; config: RoboflowConfig }
+  | { ok: false; code: "CONFIG_MISSING" | "CONFIG_INVALID" };
+
+/** Read the server-only env vars ROBOFLOW_API_KEY and ROBOFLOW_MODEL. */
+export function readRoboflowConfig(env: Record<string, string | undefined>): RoboflowConfigResult {
   const apiKey = env.ROBOFLOW_API_KEY?.trim();
-  const modelId = env.ROBOFLOW_MODEL_ID?.trim().replace(/^\/+|\/+$/g, "");
-  const modelVersion = env.ROBOFLOW_MODEL_VERSION?.trim().replace(/^\/+|\/+$/g, "");
-  if (!apiKey || !modelId || !modelVersion) return null;
-  return { apiKey, modelId, modelVersion };
+  const model = env.ROBOFLOW_MODEL?.trim().replace(/^\/+|\/+$/g, "");
+  if (!apiKey || !model) return { ok: false, code: "CONFIG_MISSING" };
+  if (!isValidModelId(model)) return { ok: false, code: "CONFIG_INVALID" };
+  return { ok: true, config: { apiKey, model } };
 }
 
 export function buildRoboflowUrl(config: RoboflowConfig): string {
-  const url = new URL(
-    `${ROBOFLOW_BASE_URL}/${encodeURIComponent(config.modelId)}/${encodeURIComponent(config.modelVersion)}`,
-  );
+  // Encode each part separately so the "/" between workspace and model slug is kept.
+  const path = config.model.split("/").map(encodeURIComponent).join("/");
+  const url = new URL(`${ROBOFLOW_BASE_URL}/${path}`);
   url.searchParams.set("confidence", String(REQUEST_CONFIDENCE));
   url.searchParams.set("overlap", String(REQUEST_OVERLAP));
   url.searchParams.set("format", "json");
