@@ -31,9 +31,9 @@ trained and hosted on [Roboflow](https://roboflow.com). It then shows:
   | `person_left_phone` | walking left, using a phone | orange |
   | `person_right_phone` | walking right, using a phone | orange |
 
-- **Confidence slider** (10–95%, default 28%). Results update instantly, with no new request.
+- **Confidence slider** (10–95%, default 40%). Results update instantly, with no new request.
   The default is `DEFAULT_CONFIDENCE_THRESHOLD_PERCENT` in [`src/lib/analysis.ts`](src/lib/analysis.ts);
-  it is set to the peak of the model's F1-confidence curve ("all classes 0.72 at 0.275", rounded to 28%).
+  it is set to the peak of the model's F1-confidence curve ("all classes 0.83 at 0.402" for the `…-yolo26n-t6` model, rounded to 40%).
 - **Duplicate merging:** when two boxes overlap with an IoU above 0.5, only the higher-confidence box
   is kept, even if their classes differ (e.g. the same person detected as both `person_left` and
   `person_left_phone`).

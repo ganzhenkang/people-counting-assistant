@@ -136,8 +136,8 @@ describe("formatPercent", () => {
 });
 
 describe("default slider threshold", () => {
-  it("is 28%, the F1-curve peak (0.275) rounded", () => {
-    expect(DEFAULT_CONFIDENCE_THRESHOLD_PERCENT).toBe(28);
+  it("is 40%, the F1-curve peak (0.402) rounded", () => {
+    expect(DEFAULT_CONFIDENCE_THRESHOLD_PERCENT).toBe(40);
   });
 });
 

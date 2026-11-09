@@ -8,10 +8,10 @@ import type { Prediction } from "@/lib/types";
 
 /**
  * DEFAULT CONFIDENCE THRESHOLD (percent) used when the page loads.
- * Set from the peak of the model's F1-confidence curve (BoxF1_curve.png:
- * "all classes 0.72 at 0.275"), so 27.5% rounded to 28%.
+ * Set from the peak of the current model's F1-confidence curve (BoxF1_curve.png for
+ * people-counting-activity-v2-2-yolo26n-t6: "all classes 0.83 at 0.402"), so 40.2% rounded to 40%.
  */
-export const DEFAULT_CONFIDENCE_THRESHOLD_PERCENT = 28;
+export const DEFAULT_CONFIDENCE_THRESHOLD_PERCENT = 40;
 
 export const SLIDER_MIN = 10;
 export const SLIDER_MAX = 95;

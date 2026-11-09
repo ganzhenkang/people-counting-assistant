@@ -107,7 +107,7 @@ test("[stubbed API] draws boxes, counts, rating, slider and toggles", async ({ p
   await upload(page, "small.jpg");
   await page.getByRole("button", { name: "Analyse" }).click();
 
-  // Default 28%: the 0.2 detection is filtered out -> 2 phone users of 4 people = 50% Medium
+  // Default 40%: the 0.2 detection is filtered out -> 2 phone users of 4 people = 50% Medium
   await expect(page.getByTestId("rating-summary")).toHaveText("2 of 4 pedestrians using a phone (50%) - Medium");
   await expect(page.getByTestId("count-total")).toHaveText("4");
   await expect(page.getByTestId("count-person_right")).toHaveText("1");
@@ -180,7 +180,7 @@ test("[stubbed API] flags are saved to localStorage and exported as JSON", async
   expect(stored).toHaveLength(1);
   expect(stored[0]).toMatchObject({
     filename: "small.jpg",
-    thresholdPercent: 28,
+    thresholdPercent: 40,
     totalPeople: 4,
     phoneUsers: 2,
     rating: "Medium",
