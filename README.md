@@ -52,6 +52,12 @@ trained and hosted on [Roboflow](https://roboflow.com). It then shows:
 - Vitest for unit tests and Playwright for browser tests
 - Deployed on [Vercel](https://vercel.com). There is no database and no login.
 
+## Model weights
+
+Final trained model (YOLO26n, 960 px): https://drive.google.com/file/d/1q-H4nFCceTW3VoyzXJdvDeCcKyZ-jSoT/view?usp=sharing
+
+Training data, training runs and related materials: https://drive.google.com/drive/folders/1AfoPS0KSJzBZNHEmffheDwNeAm5ezoSo
+
 ---
 
 ## 1. Run it locally
