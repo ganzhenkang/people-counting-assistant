@@ -65,8 +65,8 @@ Training data, training runs and related materials: https://drive.google.com/dri
 **Requirements:** Node.js 20.9 or newer (check with `node -v`), and a Roboflow account with a trained model.
 
 ```bash
-git clone <this-repo-url>
-cd <repo-folder>
+git clone https://github.com/ganzhenkang/people-counting-assistant.git
+cd people-counting-assistant
 npm install
 cp .env.example .env.local     # Windows PowerShell: Copy-Item .env.example .env.local
 # edit .env.local and fill in the two values (see below)
@@ -93,7 +93,8 @@ or fails if the version holds several models and has no alias. The full model ID
 exactly the model named. If `ROBOFLOW_MODEL` is not in the `workspace/model-slug` form, the app
 shows a setup error instead of calling Roboflow.
 
-The old `ROBOFLOW_MODEL_ID` and `ROBOFLOW_MODEL_VERSION` variables are no longer read.
+The model's class names must match the four in the table above **exactly**. They are set in
+[`src/config/classes.ts`](src/config/classes.ts).
 
 **Security:**
 
@@ -103,24 +104,13 @@ The old `ROBOFLOW_MODEL_ID` and `ROBOFLOW_MODEL_VERSION` variables are no longer
   `Authorization: Bearer` header (never in the URL). It is never logged, and never returned in
   responses or error messages.
 
-### Using a model trained by a teammate
-
-- **Trained in Roboflow:** get the full model ID (from the **Models** page) and a private API key
-  **from the same workspace as the model**. The simplest option is to train inside one shared workspace.
-- **Trained elsewhere** (e.g. Colab or Ultralytics):
-  1. Get the `best.pt` file, the model type (e.g. YOLO26n) and the `data.yaml` class list.
-  2. Upload the weights to a Roboflow dataset version with the same classes.
-  3. Use the model ID Roboflow shows for the uploaded model.
-- The class names must match the four above **exactly**. If they don't, change them in
-  [`src/config/classes.ts`](src/config/classes.ts).
-
 ## 3. Deploy to Vercel
 
 1. Import this repository in Vercel (**Add New → Project**). The framework is detected as Next.js; keep the defaults.
 2. Under **Settings → Environment Variables**, add `ROBOFLOW_API_KEY` and `ROBOFLOW_MODEL` for
-   Production (and Preview if you use it). If the project still has the old `ROBOFLOW_MODEL_ID` and
-   `ROBOFLOW_MODEL_VERSION` variables, you can delete them; the app no longer reads them.
-3. Deploy. If you change the variables later, **redeploy** so they take effect.
+   Production (and Preview if you use it).
+3. Deploy. If you change the variables later, deploy the latest commit again so they take effect.
+   (Redeploying an *older* deployment rebuilds that older code.)
 4. Open the deployed URL and analyse one real photo before a demo, to warm up the model.
 
 **Notes:**

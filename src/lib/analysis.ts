@@ -167,7 +167,6 @@ export function analyse(predictions: Prediction[], thresholdPercent: number) {
     filtered: merged,
     counts,
     rating: computeRating(counts),
-    unknown: findUnknownClasses(merged),
     hiddenByThreshold: predictions.length - aboveThreshold.length,
     mergedDuplicates: aboveThreshold.length - merged.length,
   };
